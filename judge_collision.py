@@ -39,10 +39,11 @@ class collision_cost:
   def calc_cost(self, v0, end_time, v_last, accel_diff, theta_last, alpha_diff, total_s, collision, element):
     total_cost = 0.0
     # length
-    if(total_s>=v0*end_time):
-      total_cost += 10.0*5
-    else:
-      total_cost += total_s/(v0*end_time)*10*5
+#    if(total_s>=v0*end_time):
+#      total_cost += 10.0*5
+#    else:
+#      total_cost += total_s/(v0*end_time)*10*5
+    total_cost += total_s/(element.speed_limit*end_time)*10*5
     # 速度，与路段限速比较
 #    total_cost += v_last%element.speed_limit*10
     # 偏角差，与2pi比，越小得分越高
