@@ -3,7 +3,7 @@
 """
 Created on Thu Jan 25 10:50:29 2018
 
-# 根据运动学方程生成一段指定时间长度end_time的轨迹，该轨迹由3段曲线组成，分为(0：time0)（time0:time1）(time1：end_time)
+# 根据运动学方程生成一段指定时间长度end_time的轨迹，该轨迹由n段曲线组成，分为(0：time0)（time0:time1）(time1：end_time)
   ## 时间有2个
   ## 方向盘转角速度只有一个
   ## 偏角可以有3个
@@ -38,7 +38,7 @@ class car_para:
     self.l = 2.5 # 轴距2.5m
     self.max_alpha = 30.0*np.pi/180.0 # 最大前轮偏角
     self.max_omiga = self.max_alpha/3.0 # 最大前轮偏角转速度
-    self.max_accel = 10.0 # 最大加速度
+    self.max_accel = 8.0 # 最大加速度
     self.max_dec = -10.0 # 最大减速度
     self.wheel = 2.0 # 轮距
     self.weight = 1500 # 质量
@@ -96,7 +96,7 @@ class car_plan:
 class map_element:
   def __init__(self):
     self.speed_limit = 40.0 # 速度限制 40m/s
-    self.accel_r = 5.0 # 向心加速度限制 5.0m/s^2
+    self.accel_r = 10.0 # 向心加速度限制 10.0m/s^2
   def updata(self):
     self.para = {'speed_limit':self.speed_limit, 'accel_r':self.accel_r}
     self.para_list = ['speed_limit', 'accel_r']
@@ -165,7 +165,8 @@ class traject_paras:
         v[i+1] = v[i]
       elif v[i+1]<0:
         v[i+1] = 0
-      total_s += v[i]*plan.dt
+#      total_s += v[i]*plan.dt
+      total_s += x[i+1]-x[i] # 最有效的应该是计算道路路径长度，而不是车辆行程长度，这里简单用x代替
       i += 1
     # 输出结果  
     return x,y,v,theta,alpha,total_s
@@ -176,55 +177,45 @@ class traject_paras:
   def build_tentacle(self, car, pos0, time_list, omiga_list, alpha_list, accel_list, element, dt):
     pos = car_pos()
     plan = car_plan()
-    #########################################################################
-    # 第一段
-    plan.time_list = np.arange(0,time_list[0],dt)
-    plan.omiga0 = omiga_list[0]
-    plan.max_alpha = alpha_list[0]
-    plan.a0 = accel_list[0]
-    plan.dt = dt
-    x,y,v,theta,alpha,total_s0 = self.build_trace(car, pos0, plan, element)
-    #########################################################################
-    # 第二段
-    # pos updata
-    pos.x0 = x[-1]
-    pos.y0 = y[-1]
-    pos.v0 = v[-1]
-    pos.alpha0 = alpha[-1]
-    pos.theta0 = theta[-1]
-    # plan updata
-    plan.time_list = np.arange(time_list[0],time_list[1],dt)
-    plan.omiga0 = omiga_list[1]
-    plan.max_alpha = alpha_list[1]
-    plan.a0 = accel_list[1]
-    # 拼接
-    x1,y1,v1,theta1,alpha1,total_s1 = self.build_trace(car, pos, plan, element)
-    x = np.hstack((x,x1))
-    y = np.hstack((y,y1))
-    v = np.hstack((v,v1))
-    alpha = np.hstack((alpha, alpha1))
-    theta = np.hstack((theta, theta1))
-    #########################################################################
-    # 第三段
-    pos.x0 = x[-1]
-    pos.y0 = y[-1]
-    pos.v0 = v[-1]
-    pos.alpha0 = alpha[-1]
-    pos.theta0 = theta[-1]
-    # plan updata
-    plan.time_list = np.arange(time_list[1],time_list[2],dt)
-    plan.omiga0 = omiga_list[2]
-    plan.max_alpha = alpha_list[2]
-    plan.a0 = accel_list[2]
-    # 拼接
-    x1,y1,v1,theta1,alpha1,total_s2 = self.build_trace(car, pos, plan, element)
-    x = np.hstack((x,x1))
-    y = np.hstack((y,y1))
-    v = np.hstack((v,v1))
-    alpha = np.hstack((alpha, alpha1))
-    theta = np.hstack((theta, theta1))
-    #            
-    return x,y,v,theta,alpha,total_s0+total_s1+total_s2
+    x=[]
+    y=[]
+    v=[]
+    theta=[]
+    alpha=[]
+    total_s=np.zeros(len(time_list))
+    
+    x.append(pos0.x0)
+    y.append(pos0.y0)
+    v.append(pos0.v0)
+    alpha.append(pos0.alpha0)
+    theta.append(pos0.theta0)
+    
+    for i in range(len(time_list)):
+      #########################################################################
+      # 第一段
+      # pos updata
+      pos.x0 = x[-1]
+      pos.y0 = y[-1]
+      pos.v0 = v[-1]
+      pos.alpha0 = alpha[-1]
+      pos.theta0 = theta[-1]
+      # plan updata
+      if i==0:
+        plan.time_list = np.arange(0,time_list[0],dt)
+      else:
+        plan.time_list = np.arange(time_list[i-1],time_list[i],dt)
+      plan.omiga0 = omiga_list[i]
+      plan.max_alpha = alpha_list[i]
+      plan.a0 = accel_list[i]
+      plan.dt = dt
+      x1,y1,v1,theta1,alpha1,total_s[i] = self.build_trace(car, pos, plan, element)
+      # combine
+      x = np.hstack((x,x1))
+      y = np.hstack((y,y1))
+      v = np.hstack((v,v1))
+      alpha = np.hstack((alpha, alpha1))
+      theta = np.hstack((theta, theta1))
+    return x,y,v,theta,alpha,np.sum(total_s)
 
   ######################
   # 随机生成一根触须：
@@ -234,29 +225,36 @@ class traject_paras:
   ## 加速度可以有3个
   ## cureve决定是否为直线
   ######################  
-  def rand_build_tentacle(self, car, pos0, element, end_time, curve):
+  def rand_build_tentacle(self, trace_num, car, pos0, element, end_time, curve):
     dt=0.1 # 100ms
     # 初始化
-    time_list = np.zeros(3)
-    omiga_list = np.zeros(3)
-    alpha_list = np.zeros(3)
-    accel_list = np.zeros(3)
+    time_list = np.zeros(trace_num)
+    omiga_list = np.zeros(trace_num)
+    alpha_list = np.zeros(trace_num)
+    accel_list = np.zeros(trace_num)
     
-    time_list[0] = np.random.randint(2, end_time*10-2)
-    time_list[1] = np.random.randint(time_list[0]+1, end_time*10)
-    time_list[2] = end_time*10
-    time_list = time_list/10
-    
-    omiga_list[0] = np.random.rand()*car.max_omiga
-    omiga_list[1] = np.random.rand()*car.max_omiga
-    omiga_list[2] = np.random.rand()*car.max_omiga
-    # 当不为曲线时，方向盘转角速度为0
-    omiga_list = omiga_list*curve
-    
-    for i in range(3):
+    for i in range(trace_num):
+      if i==0:
+        time_list[i] = np.random.randint(2, end_time*10-trace_num)
+      elif i==(trace_num-1):
+        time_list[i] = end_time*10
+      else:
+        time_list[i] = np.random.randint(time_list[i-1]+1, end_time*10-trace_num+i)
+      
+      if i==0:
+        omiga_list[i] = np.random.rand()*car.max_omiga
+      else:
+        omiga_list[i] = np.random.rand()*car.max_omiga # omiga_list[0]
       alpha_list[i] = np.random.uniform(-1.0,1.0)*car.max_alpha
       accel_list[i] = np.random.uniform(car.max_dec, car.max_accel)
-    
+      ########
+      # debug
+      # omiga_list[i] = car.max_omiga # debug
+      
+    # 0.1s分度
+    time_list = time_list/10
+    # 当不为曲线时，方向盘转角速度为0
+    omiga_list = omiga_list*curve
     x,y,v,theta,alpha,total_s = self.build_tentacle(car, pos0, time_list, omiga_list, alpha_list, accel_list, element, dt)
     
     return x, y, v, theta, alpha_list, total_s, time_list, omiga_list, accel_list
@@ -279,10 +277,13 @@ if __name__ == '__main__':
   pos0.theta0 = 0.0
     # 生成轨迹束
   end_time = 3
-  curve = 1
   x,y,v,theta,alpha_list, total_s,time_list, omiga_list, accel_list = \
-    traject.rand_build_tentacle(car, pos0, element, end_time,curve)
+    traject.rand_build_tentacle(3,car, pos0, element, end_time,1)
   plt.plot(x,y)
   plt.title("tentacle")
   plt.grid("on")
   print("total length is %f" %(total_s)) 
+  print('time_list={}'.format(time_list))
+  print('omiga_list={}'.format(omiga_list))
+  print('alpha_list={}'.format(alpha_list))
+  print('accel_list={}'.format(accel_list))
