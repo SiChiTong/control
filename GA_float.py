@@ -39,8 +39,8 @@ output：
   Cm1，Cm2：交换后的DNA
 """
 def CrossOver(M1, M2, alpha):
-  Cm1 = M1*alpha + (1-alpha)*M2
-  Cm2 = M2*alpha + (1-alpha)*M1
+  Cm1 = np.add(np.multiply(M1, alpha), np.multiply((1-alpha),M2))
+  Cm2 = np.add(np.multiply(M2, alpha), np.multiply((1-alpha),M1))
   return Cm1, Cm2
 
 """############################################################################
@@ -54,9 +54,9 @@ output：
 def Mutation(M, Mmin, Mmax, ratiok):
   r = np.random.randint(10)
   if r%2==0:
-    M = M+ratiok*(Mmax-M)
+    M = np.add(M, np.multiply(ratiok, np.subtract(Mmax, M)))
   else:
-    M = M-ratiok*(M-Mmin)
+    M = np.subtract(M, np.multiply(ratiok, np.subtract(M, Mmin)))
   return M
 
 """############################################################################
