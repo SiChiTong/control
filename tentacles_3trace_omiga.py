@@ -232,31 +232,27 @@ class traject_paras:
     omiga_list = np.zeros(trace_num)
     alpha_list = np.zeros(trace_num)
     accel_list = np.zeros(trace_num)
-    
+    # 计算轨迹
     for i in range(trace_num):
+      # 0.1s周期，所以时间分辨率只需要0.1s
       if i==0:
         time_list[i] = np.random.randint(2, end_time*10-trace_num)
       elif i==(trace_num-1):
         time_list[i] = end_time*10
       else:
         time_list[i] = np.random.randint(time_list[i-1]+1, end_time*10-trace_num+i)
-      
-      if i==0:
-        omiga_list[i] = np.random.rand()*car.max_omiga
-      else:
-        omiga_list[i] = np.random.rand()*car.max_omiga # omiga_list[0]
-      alpha_list[i] = np.random.uniform(-1.0,1.0)*car.max_alpha
+      # 将转角速度分辨率设为1/100 rad/s
+      omiga_list[i] = np.random.randint(0,100)*car.max_omiga/100.0
+      # 将偏角分辨率设为1/100 rad
+      alpha_list[i] = np.random.randint(-100,100)*car.max_alpha/100.0
+      # 将加速度分辨率设为？
       accel_list[i] = np.random.uniform(car.max_dec, car.max_accel)
-      ########
-      # debug
-      # omiga_list[i] = car.max_omiga # debug
-      
     # 0.1s分度
     time_list = time_list/10
     # 当不为曲线时，方向盘转角速度为0
     omiga_list = omiga_list*curve
     x,y,v,theta,alpha,total_s = self.build_tentacle(car, pos0, time_list, omiga_list, alpha_list, accel_list, element, dt)
-    
+    # 返回    
     return x, y, v, theta, alpha_list, total_s, time_list, omiga_list, accel_list
     
 #############################
@@ -287,3 +283,6 @@ if __name__ == '__main__':
   print('omiga_list={}'.format(omiga_list))
   print('alpha_list={}'.format(alpha_list))
   print('accel_list={}'.format(accel_list))
+
+  #############################
+  # 
