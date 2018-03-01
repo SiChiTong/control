@@ -18,7 +18,8 @@ if __name__ == '__main__':
   traject = tt3.traject_calc()
   print("the method is ""para:const time""")
   
-  end_time = 3.0 # 规划时间长度
+  end_time = 3.5 # 规划时间长度
+  time_num = int(end_time*2)
 
   #############################################################################
   # 障碍物时空矩阵
@@ -26,17 +27,17 @@ if __name__ == '__main__':
   perception = np.zeros([600, 21]) # 300m*（3.5m*3）
   # ob0的真实尺寸为（5，4.5），因为距离分辨率为0.5m，地图划分为0.5m一格，所以 /0.5 后转化为占用多少格
   ob0=np.ones([int(5/0.5), int(4.5/0.5)]) # 占据的格数矩阵
-  ob0_v=int(0/0.5) # 速度为0
+  ob0_v=int(10/0.5) # 速度为0
   ob0_pos=[int(30/0.5), int(0/0.5)] # 位置为
   ob0_size = np.shape(ob0) # 尺寸所对应的格数
   
   ob1=np.ones([int(5/0.5), int(5.5/0.5)])
-  ob1_v=int(15/0.5)
+  ob1_v=int(10/0.5)
   ob1_pos=[int(25/0.5), int(3.5/0.5)]
   ob1_size = np.shape(ob1)
   
   ob2=np.ones([int(5/0.5), int(3/0.5)])
-  ob2_v=int(30/0.5)
+  ob2_v=int(10/0.5)
   ob2_pos=[int(20/0.5), int(7/0.5)]
   ob2_size = np.shape(ob2)
   
@@ -57,9 +58,9 @@ if __name__ == '__main__':
   perception_list=[]
   for itime in range(int(end_time*10)):
     perception0 = np.zeros([600, 21])
-    perception0[(ob0_pos[0]+itime*ob0_v/10):(ob0_pos[0]+np.shape(ob0)[0]+itime*ob0_v/10), 0:np.shape(ob0)[1]] = ob0
-    perception0[ob1_pos[0]+itime*ob1_v/10:ob1_pos[0]+np.shape(ob1)[0]+itime*ob1_v/10, 5:(5+np.shape(ob1)[1])] = ob1
-    perception0[ob2_pos[0]+itime*ob2_v/10:50+itime*ob2_v/10, 12:(12+np.shape(ob2)[1])] = ob2
+    perception0[ob0_pos[0]+itime*ob0_v/10:ob0_pos[0]+np.shape(ob0)[0]+itime*ob0_v/10, ob0_pos[1]:ob0_pos[1]+np.shape(ob0)[1]] = ob0
+    perception0[ob1_pos[0]+itime*ob1_v/10:ob1_pos[0]+np.shape(ob1)[0]+itime*ob1_v/10, ob1_pos[1]:ob1_pos[1]+np.shape(ob1)[1]] = ob1
+    perception0[ob2_pos[0]+itime*ob2_v/10:ob2_pos[0]+np.shape(ob2)[0]+itime*ob2_v/10, ob2_pos[1]:ob2_pos[1]+np.shape(ob2)[1]] = ob2
     perception_list.append(perception0)  
 
   rect0 = plt.Rectangle(((ob0_pos[0]+itime*ob0_v/10)/2, ob0_pos[1]/2), ob0_size[0]/2, ob0_size[1]/2)
@@ -72,13 +73,13 @@ if __name__ == '__main__':
   #############################################################################
   # 地图参数初始化
   element = tt3.map_element()
-  element.speed_limit = 30
+  element.speed_limit = 35
   dt = 0.1
   #############################################################################
   # 车辆初始状态
   pos0 = tt3.car_pos()
   pos0.x0 = 0.0 # 1.5m
-  pos0.y0 = 3.0
+  pos0.y0 = 4.5
   pos0.v0 = 20.0
   pos0.alpha0 = 0.0
   pos0.theta0 = 0.0
@@ -105,16 +106,14 @@ if __name__ == '__main__':
     compcnt += 1
     
 #    end_time = np.random.randint(2,5)
-    """
     # 生成5条直线
     if(i>=45):
-      x,y,v,theta,alpha,total_s,time_list, omiga_list, alpha_list, accel_list = \
-        traject.rand_build_tentacle(car, pos0, element, end_time, 0)
+      result, para = \
+        traject.rand_build_tentacle(time_num, car, pos0, element, end_time, 0)
     # 其他生成曲线
     else:
-    """
-    result, para = \
-      traject.rand_build_tentacle(6, car, pos0, element, end_time, 1)
+      result, para = \
+        traject.rand_build_tentacle(time_num, car, pos0, element, end_time, 1)
     # 计算碰撞函数  
     time_range = int(para.time_array[-1]/dt)
     colli = cc.calc_collision(result.x, result.y, perception_list, time_range)
@@ -140,6 +139,7 @@ if __name__ == '__main__':
   #############################################################################
   pfsort = np.argsort(cost_array) # 生存率排序的序号
   max_cost = np.max(cost_array)
+  pf = np.sort(cost_array/np.sum(cost_array))
   
   plt.figure(1)
   plt.title("tentacle")
@@ -150,11 +150,8 @@ if __name__ == '__main__':
     else:
       plt.plot(result_array[pfsort[-1-i]].x, result_array[pfsort[-1-i]].y, color='blue')
       
-    print('total_s=%3.2f / %1.2f' %(result_array[pfsort[-1-i]].s, cost_array[pfsort[-1-i]]))
+    print('total_s=%3.2f / cost:%1.2f / v:%2.2f' %(result_array[pfsort[-1-i]].s, cost_array[pfsort[-1-i]], result_array[pfsort[-1-i]].v[-1]))
 
   plt.show()
-  print('get {} in {}'.format(trace_num, compcnt))
-  
-  pf = np.sort(cost_array/np.sum(cost_array))
- 
+  print('get {} in {} and the planning time is {}'.format(trace_num, compcnt, para_array[pfsort[-1]].time_array[-2]))
   
